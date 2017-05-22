@@ -1,8 +1,8 @@
 Require Import List.
 Require Import ZArith.
 Import ListNotations.
+Require Import Bool.
 Open Scope Z_scope.
-
 
 
 Inductive sorted : list Z -> Prop :=
@@ -149,19 +149,19 @@ Fixpoint is_minumum (z:Z) (l:list Z) {struct l} : bool :=
     | nil => true
     | a :: l' => 
       match Z_le_gt_dec z a with
-      | left _ =>  is_minumum a l'
+      | left _ =>  is_minumum z l'
       | right _ => false
       end
   end.
 
-Eval compute in is_minumum 1 [1;2;3;4].
+Eval compute in is_minumum 5 [8;7;6;9].
 
 
 Lemma my4: forall (l:list Z) (z:Z), sorted (z::l) -> is_minumum z l = true.
 Proof. 
 induction l. simpl. auto.
 intros. simpl. case(Z_le_gt_dec z a). intro. 
-apply my2 in H. apply IHl in H. auto with sort. intro.
+apply my3 in H. apply IHl in H. auto with sort. intro.
 inversion H. contradiction.
 Qed.
 
@@ -177,151 +177,126 @@ Proof.
   auto with sort.
 Qed.
 
+Lemma my7: forall (x: Z), x = x.
+Proof.
+  intros. auto.
+Qed.
+
+Lemma nb_occ_nil: forall  (l : list Z), (forall (a : Z),  nb_occ a l = 0%nat) -> l = [].
+Proof.
+  induction l. simpl. auto.  
+  intro. assert (H0:=H a). simpl in H0. case (Z.eq_dec a a) in H0.
+  symmetry in H0. Check O_S. apply O_S in H0. contradiction. assert (HH:= my7 a). contradiction.
+Qed.
+
+
+
+Lemma equiv_nil: forall (l : list Z), equiv l [] -> l = [].
+  induction l. auto. intro.
+  unfold equiv. apply nb_occ_nil in H. apply H. 
+Qed.
+
+Lemma equiv_0: forall (l l' :list Z) (z: Z), equiv (z::l) (z::l') -> equiv l l'.
+Proof.
+  unfold equiv. intros l l' z H z0.
+  assert (H1:= H z0). simpl in H1. case (Z.eq_dec z0 z) in H1. apply eq_add_S in H1. auto. auto.
+Qed.
+
+Lemma equiv_1: forall (l l' :list Z) (z: Z), equiv l l' -> equiv (z::l) (z::l').
+Proof.
+  unfold equiv. intros l l' z H z0.
+  assert (H1:= H z0). simpl. case (Z.eq_dec z0 z). intros. apply eq_S.  auto. auto.
+Qed.
+
+Lemma my8: forall (l: list Z) (z a: Z), is_minumum z l = true -> z <=a -> is_minumum z (a::l) = true.
+Proof.
+  intros. simpl. case (Z_le_gt_dec z a). intros. auto. intros. contradiction.
+Qed.
+
+
+Lemma my10: forall (l:list Z) (a:Z), equiv (a::l) [a] -> (a::l) = [a].
+Proof.
+  induction l. intros. auto. 
+  intros. assert (H1:=IHl a0). 
+  unfold equiv in H. assert (H2:= H a). simpl in H2. case (Z.eq_dec a a0) in H2. case (Z.eq_dec a a) in H2. symmetry in H2.
+  apply eq_add_S in H2. apply O_S in H2. contradiction. assert (HH:= my7 a). contradiction. 
+  case (Z.eq_dec a a) in H2. symmetry in H2. apply O_S in H2. contradiction. assert (HH:= my7 a). contradiction. 
+Qed.
+
+Lemma my11: forall  (a b:Z) (l:list Z), equiv (a::l) [b] -> ((a = b) /\ ((a::l) = [a])).
+Proof.
+  intros a b. case (Z.eq_dec a b). intros. split. auto. apply my10. symmetry in e. rewrite e in H. auto.
+  intros. unfold equiv in H. assert (H1:= H a).
+  simpl in H1. case (Z.eq_dec a a) in H1. case (Z.eq_dec a b) in H1. contradiction. 
+    symmetry in H1. apply O_S in H1. contradiction. assert (HH:= my7 a). contradiction.
+Qed.
+
+
+Definition minimum (m:Z) (l:list Z) := 
+    forall z:Z, (nb_occ z l > 0)%nat -> m <= z.
+
+
+Lemma my77: forall (x: nat), (x > x)%nat -> False.
+Proof.
+  intros. assert (H1:=eq_refl x). inversion H. intuition. intuition. 
+Qed.
+
+Lemma my777: forall (x: Z), (x > x) -> False.
+Proof.
+  intros. assert (H1:=eq_refl x). inversion H. intuition.
+Qed.
+
+Lemma my12: forall (l:list Z) (m:Z), sorted (m::l) -> minimum m l.
+Proof.
+  induction l. intros. unfold minimum. intros. simpl in H0. assert(H2:=my77 0). apply H2 in H0. contradiction.
+  intros. assert (H0:= IHl m). assert(H4:=H). apply my3 in H. apply H0 in H. case (Z_le_gt_dec m a).
+  intros. unfold minimum. intros. unfold minimum in H. assert (H2:=H z). simpl in H1. case (Z.eq_dec z a) in H1.
+  symmetry in e. rewrite e in l0. auto. apply H2. apply H1.
+  intros. inversion H4. contradiction.
+Qed.
+
+Lemma my13: forall (x:nat), (S x > 0)%nat.
+Proof.
+  intros. induction x. auto. auto.
+Qed.
+
+Lemma my14: forall (l:list Z) (m:Z), sorted l -> minimum m l -> sorted (m::l).
+Proof.
+  induction l. auto with sort.
+  intros. case (Z_le_gt_dec m a). intros. apply my6 with l m a in H. apply H. auto. 
+  intros. assert(H4:=H0). unfold minimum in H0. assert(H1:=H0 a). simpl in H1. case (Z.eq_dec a a) in H1.
+  assert (H2:=my13 (nb_occ a l)). apply H1 in H2. contradiction. assert (H2:= my7 a). contradiction.
+Qed.
+
+Lemma min_eq: forall (l l':list Z) (m:Z), equiv l l' -> minimum m l -> minimum m l'.
+Proof.
+  intros. unfold minimum. intros. unfold minimum in H0. apply H0. unfold equiv in H. assert (H2:=H z).
+  rewrite H2. apply H1.
+Qed.
+
+Lemma my15: forall (l:list Z) (a x:Z), minimum a l -> a <= x -> minimum a (x::l).
+Proof.
+  unfold minimum. intros. simpl in H1. case (Z.eq_dec z x) in H1. symmetry in e. rewrite e in H0. apply H0.
+  assert (H2:=H z). apply H2 in H1. apply H1.
+Qed.
+
+Lemma my16: forall (a x: Z), x > a -> a <= x.
+Proof.
+  intros. intuition.
+Qed.
+
 Lemma bubble_sorted :
  forall (l:list Z) (x:Z), sorted l -> sorted (bubble x l).
 Proof.
 induction l. simpl; auto with sort.
-intros. simpl. case (Z_le_gt_dec x a). intro.
-assert (H1 := H).
+intros. simpl. assert (H1 := H). case (Z_le_gt_dec x a). intro.
 apply my2 in H. apply IHl with a in H. apply my6 with l x a in H1.
-apply my4 in H1. apply my5. apply H. 
-
-Lemma min_eq: forall (l l':list Z) (z:Z), equiv l l' -> is_minumum z l = true -> is_minumum z l' = true.
-Proof.
-  induction l.
-Lemma equiv_nil: forall (l : list Z) (a:Z), equiv [] (a::l) -> equiv [] l.
-  unfold equiv. simpl. intros l a H z. 
-
-Lemma nb_occ_nil: forall (l : list Z) (a : Z),  nb_occ a l = 0%nat -> l = [].
-Proof.
-  induction l. simpl. auto. simpl. intro a0. case (Z.eq_dec a0 a). intros.
-  set (x:=nb_occ a0 l) in H. symmetry in H. apply O_S in H. contradiction. revert a0. intros. 
-  apply IHl with a0 in H.
-
-
-
-
-
-
-
-
-
-
-
-
-Lemma my7: forall (l : list Z) (a:Z), equiv [] (a::l) -> equiv [] l.
-Proof.
-  unfold equiv. intros. simpl. simpl in H. case (Z.eq_dec z a) in H. apply H with z.
-
-Lemma my7: forall (l l':list Z) (z:Z), equiv l l' -> is_minumum z l = true -> is_minumum z l' = true.
-Proof.
-  induction l.
-  induction l'. intros. auto with sort. intros. simpl. case (Z_le_gt_dec z a). intros.
-  apply IHl' with a in H0. apply H0. unfold equiv in H. simpl in H. case (Z.eq_dec z a) in H.
-
-
-
-
-
-induction l.
-simpl. intros. case (Z_le_gt_dec x a) ; intro; simpl; auto with sort zarith. 
-
-intros.
-simpl. case (Z_le_gt_dec x a). intros. 
-induction l.
-simpl. case (Z_le_gt_dec x) ; intro; simpl; auto with sort zarith. 
-case (Z_le_gt_dec x a). intros.  simpl. case (Z_le_gt_dec a a0). intros.
-
-
-
-elim l.
-intros.
-simpl. auto with sort. simpl. 
-case (Z_le_gt_dec x a). intro; simpl; auto with sort zarith. intro. 
-simpl. auto with sort zarith.
-intros. apply my3 in H0. apply H with x in H0.
-simpl. simpl in H0. case (Z_le_gt_dec x a). case (Z_le_gt_dec x a) in H0.
-intros. case (Z_le_gt_dec a a0). intros. 
-
-
-elim H.
-apply my2 in H. apply IHl in H. 
-simpl; auto with sort. simpl.
-intro z. case (Z_le_gt_dec x z). simpl; auto with sort zarith. 
-simpl. auto with sort zarith. 
-
-intros z1 z2 l2 H1. case (Z_le_gt_dec x z2). case (Z_le_gt_dec x z1).
-intros. simpl. case (Z_le_gt_dec x z1).  case (Z_le_gt_dec z1 z2). intros. 
-apply sorted2. auto with sort.
-apply my1 with l3 z2 z1 in H1. apply my2 in H. apply IHl in H1.
-
-
-intro. apply sorted2. auto with arith.
-induction x. inversion g.
-Check Z_le_lt_eq_dec.
-intro. 
-
-case (Z_le_gt_dec x a). simpl; 
-   auto with sort zarith.
- intros z1 z2. case (Z_le_gt_dec z1 z2). case (Z_le_gt_dec x z1). 
- case (Z_le_gt_dec x z2). intros. apply sorted2. auto with sort zarith. 
-  
-
-
-
- intros a b. case (Z_le_gt_dec x b). simpl. intros.
-  case (Z_le_gt_dec x a). case (Z_le_gt_dec a b).
-auto with sort.  intros.  case (Z_le_gt_dec z1 z2). auto with sort zarith.
+apply my12 in H1. apply my14. apply H. Check bubble_equiv. assert (H2:= bubble_equiv l a). 
+apply min_eq with (a :: l) . apply H2. apply H1. apply l0.
+intros. apply my2 in H. apply IHl with x in H. apply my14. apply H. 
+assert (H2:=bubble_equiv l x). apply min_eq with (x::l). apply H2. apply my15. apply my12 in H1.
+apply H1. apply my16. apply g.
 Qed.
-
-Lemma my6: forall (l:list Z), equiv l l' -> l=[].
-Proof.
-
-unfold equiv. simpl. Check trans_eq. eauto. unfold nb_occ. eauto. simpl. 
-
-Lemma my6: forall (l l':list Z) (z:Z), equiv l l' -> is_minumum z l = true -> is_minumum z l' = true.
-Proof.
-induction l.
-induction l'.
-auto with sort zarith. intros. apply IHl' with z in H0. simpl in H.
-
-  intros. simpl in H0. inversion H. assert (l' = nil). apply equiv_sym in H. auto with sort zarith.
-
-
-
-Check fold_right.
-(* fold_right : forall A B : Type, (B -> A -> A) -> A -> list B -> A *)
-
-Definition insertion_sort (l : list Z) := fold_right (aux) ([]) (l).
-
-Eval compute in (insertion_sort [1;3;5;6;1;2;0;-1;1]).
-
-
-Inductive Sorting_correct (algo : list Z -> list Z) :=
-| info:
-   (forall l:list Z, equiv l (algo l) /\ sorted (algo l)) -> Sorting_correct algo.
-
-Lemma insert_perm : forall h t, equiv (aux h t) (h :: t).
-Proof.
-  intros. induction t as [|h' t']; auto with sort.
-  simpl. destruct (Z_le_gt_dec h h'); auto with sort.
-  apply equiv_trans with (h' :: h :: t'); auto with sort. 
-Qed.
-
-Theorem insertion_sort_correct : Sorting_correct insertion_sort.
-Proof.
-  constructor. 
-  intros. split.
-  induction l as [| a l IHl]. 
-  simpl. auto with sort. simpl.
-  assert (equiv (a :: l) (a :: insertion_sort l)); auto with sort.
-  apply equiv_trans with (l':=(a :: insertion_sort l)). apply H. 
-  apply equiv_sym.
-  apply insert_perm with (t:=(insertion_sort l)).
-  induction l. simpl;auto with sort. 
-  simpl. 
-  apply aux_sorted. apply IHl. 
-Qed. 
 
 
 Definition Z_sort :
@@ -329,10 +304,10 @@ Definition Z_sort :
  induction l as [| a l IHl]. 
  exists (nil (A:=Z)); split; auto with sort.
  case IHl; intros l' [H0 H1].
- exists (aux a l'). split.
+ exists (bubble a l'). split.
  apply equiv_trans with (a :: l'). auto with sort.
- apply aux_equiv.
- apply aux_sorted; auto.
+ apply bubble_equiv.
+ apply bubble_sorted; auto.
 Defined.
 
 
